@@ -14,8 +14,7 @@ class CodeReceiver:
     def __init__(self):
         self.phone_requests = []
         self.current_index = -1
-        self.code_queue = []
-        self.is_running = False  # 标识是否正在进行验证码请求
+        self.code_queue = ""
 
     def add_phone_request(self, phone_number, request_url):
         self.phone_requests.append((phone_number, request_url))
@@ -34,7 +33,7 @@ class CodeReceiver:
 
     def get_current_code(self):
         if self.current_index >= 0 and self.current_index < len(self.code_queue):
-            return self.code_queue[self.current_index]
+            return self.code_queue
         else:
             return None
 
@@ -59,13 +58,11 @@ class CodeReceiver:
             response = requests.get(request_url)
             code = self.extract_code(response.text)
             if code:
-                self.code_queue.append(code)
-                self.is_running = False  # 请求成功后将标识设置为False
+                self.code_queue = code
             else:
                 print(f"No code received for {phone_number}")
         except requests.RequestException as e:
             print(f"Request failed for {phone_number}. Error: {str(e)}")
-            self.is_running = False  # 请求失败后将标识设置为False
 
 
 class AppGUI:
@@ -112,6 +109,7 @@ class AppGUI:
 
         self.is_processing = False
         self.is_waiting = False
+        self.is_copying = False
 
         # 创建全局事件监听器
         self.listener = keyboard.GlobalHotKeys({
@@ -142,7 +140,7 @@ class AppGUI:
         self.current_code_var.set("")
         self.list_box.delete(0, tk.END)
         for i, (phone_number, request_url) in enumerate(code_receiver.phone_requests):
-            item = f"{i+1}. 手机号: {phone_number}, 地址: {request_url}"
+            item = f"{i + 1}. 手机号: {phone_number}, 地址: {request_url}"
             self.list_box.insert(tk.END, item)
 
     def import_numbers(self):
@@ -155,7 +153,7 @@ class AppGUI:
             for line in lines:
                 line = line.strip()
                 if line:
-                    phone_number, request_url, _ = line.split("\t")
+                    phone_number, request_url = line.split("\t")
                     phone_number = phone_number[2:]  # 去除前面的"1-"
                     code_receiver.add_phone_request(phone_number, request_url)
 
@@ -166,7 +164,9 @@ class AppGUI:
     def clear_phone_requests(self):
         code_receiver.phone_requests.clear()
         code_receiver.current_index = -1
-        code_receiver.code_queue.clear()
+        code_receiver.code_queue = ""
+        self.is_processing = False
+        self.is_waiting = False
         self.current_phone_var.set("")
         self.current_code_var.set("")
         self.update_list_box()
@@ -174,14 +174,17 @@ class AppGUI:
     def start_processing(self):
         if not self.is_processing:
             self.is_processing = True
+            self.is_copying = True
             self.start_button.config(state=tk.DISABLED)
             self.stop_button.config(state=tk.NORMAL)
             self.process_next_phone()
+            threading.Thread(target=self.wait_for_code).start()
 
     def stop_processing(self):
         if self.is_processing:
             self.is_processing = False
             self.is_waiting = False
+            self.is_copying = False
             self.stop_button.config(state=tk.DISABLED)
             self.start_button.config(state=tk.NORMAL)
 
@@ -192,28 +195,28 @@ class AppGUI:
                 self.copy_current_phone()
                 self.current_phone_var.set(phone_number)
                 self.current_code_var.set("")
+                code_receiver.code_queue = ""
                 self.is_waiting = True
-                threading.Thread(target=self.wait_for_code).start()
+                self.is_copying = False
             else:
                 self.is_processing = False
+                self.is_copying = False
         else:
             self.stop_processing()
 
     def wait_for_code(self):
-        if self.is_waiting:
+        while self.is_waiting:
+            self.is_copying = True
             code_receiver.request_code(self.current_phone_var.get(), code_receiver.get_current_phone_url())
-            self.root.after(100, self.check_for_code)
-        else:
-            self.process_next_phone()
+            time.sleep(3)
+            self.check_for_code()
 
     def check_for_code(self):
         code = code_receiver.get_current_code()
-        if code:
+        if code and self.is_copying:
             self.current_code_var.set(code)
-            self.is_waiting = False
+            # self.is_waiting = False
             self.copy_current_code()
-        else:
-            self.root.after(100, self.wait_for_code)
 
     def copy_current_phone(self):
         phone_number = code_receiver.get_current_phone_number()
@@ -225,18 +228,6 @@ class AppGUI:
         if code:
             pyperclip.copy(code)
 
-    # def handle_key_press(self, event):
-    #     if event.keysym == "F1":
-    #         self.copy_current_phone()
-    #     elif event.keysym == "F2":
-    #         self.copy_current_code()
-    #     elif event.keysym == "F3":
-    #         self.process_next_phone()
-    #
-    # def run(self):
-    #     self.root.bind("<Key>", self.handle_key_press)
-    #     self.root.mainloop()
-
 
 if __name__ == "__main__":
     code_receiver = CodeReceiver()
@@ -245,4 +236,3 @@ if __name__ == "__main__":
         app.run()
     finally:
         app.stop()
-
