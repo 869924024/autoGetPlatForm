@@ -133,7 +133,8 @@ class AppGUI:
             request_url = tk.simpledialog.askstring("添加地址", "输入地址:")
             if request_url:
                 code_receiver.add_phone_request(phone_number, request_url)
-                self.update_list_box()
+                self.current_index = len(code_receiver.phone_requests) - 1  # 更新当前号码索引
+                self.update_list_box()  # 更新列表框显示
 
     def update_list_box(self):
         self.current_phone_var.set("")
@@ -142,6 +143,8 @@ class AppGUI:
         for i, (phone_number, request_url) in enumerate(code_receiver.phone_requests):
             item = f"{i + 1}. 手机号: {phone_number}, 地址: {request_url}"
             self.list_box.insert(tk.END, item)
+            if i == code_receiver.current_index:
+                self.list_box.itemconfig(i, fg="red")  # 将当前号码标识为红色
 
     def import_numbers(self):
         file_path = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt")])
@@ -157,7 +160,8 @@ class AppGUI:
                     phone_number = phone_number[2:]  # 去除前面的"1-"
                     code_receiver.add_phone_request(phone_number, request_url)
 
-            self.update_list_box()
+            self.current_index = 0  # 更新当前号码索引
+            self.update_list_box()  # 更新列表框显示
             self.current_phone_var.set(code_receiver.phone_requests[0][0])
             pyperclip.copy(code_receiver.phone_requests[0][0])
 
@@ -179,6 +183,7 @@ class AppGUI:
             self.stop_button.config(state=tk.NORMAL)
             self.process_next_phone()
             threading.Thread(target=self.wait_for_code).start()
+            #self.update_list_box()  # 更新列表框显示
 
     def stop_processing(self):
         if self.is_processing:
@@ -193,6 +198,7 @@ class AppGUI:
             phone_number = code_receiver.get_next_phone_number()
             if phone_number:
                 self.copy_current_phone()
+                self.update_list_box()  # 更新列表框显示
                 self.current_phone_var.set(phone_number)
                 self.current_code_var.set("")
                 code_receiver.code_queue = ""
