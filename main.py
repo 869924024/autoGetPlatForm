@@ -147,6 +147,10 @@ class AppGUI:
             self.list_box.insert(tk.END, item)
             if i == code_receiver.current_index:
                 self.list_box.itemconfig(i, fg="red")  # 将当前号码标识为红色
+                #选中当前号码
+                self.list_box.select_set(i)
+                #移动到当前号码
+                self.list_box.see(i)
 
     def import_numbers(self):
         file_path = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt")])
