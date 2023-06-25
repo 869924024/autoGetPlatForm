@@ -16,18 +16,18 @@ class CodeReceiver:
         self.current_index = -1
         self.code_queue = ""
 
-    def add_phone_request(self, phone_number, request_url):
-        self.phone_requests.append((phone_number, request_url))
+    def add_phone_request(self, phone_number_trimmed, phone_number, request_url):
+        self.phone_requests.append((phone_number_trimmed, phone_number, request_url))
 
     def get_current_phone_number(self):
         if self.current_index >= 0 and self.current_index < len(self.phone_requests):
-            return self.phone_requests[self.current_index][0]
+            return self.phone_requests[self.current_index][1]
         else:
             return None
 
     def get_current_phone_url(self):
         if self.current_index >= 0 and self.current_index < len(self.phone_requests):
-            return self.phone_requests[self.current_index][1]
+            return self.phone_requests[self.current_index][2]
         else:
             return None
 
@@ -40,7 +40,7 @@ class CodeReceiver:
     def get_next_phone_number(self):
         if self.current_index < len(self.phone_requests) - 1:
             self.current_index += 1
-            return self.phone_requests[self.current_index][0]
+            return self.phone_requests[self.current_index][1]
         else:
             return None
 
@@ -128,19 +128,21 @@ class AppGUI:
         self.listener.stop()
 
     def add_phone_request(self):
-        phone_number = tk.simpledialog.askstring("添加手机号", "输入手机号:")
-        if phone_number:
+        phone_number_trimmed = tk.simpledialog.askstring("添加手机号", "输入手机号:")
+        if phone_number_trimmed:
             request_url = tk.simpledialog.askstring("添加地址", "输入地址:")
             if request_url:
-                code_receiver.add_phone_request(phone_number, request_url)
-                self.current_index = len(code_receiver.phone_requests) - 1  # 更新当前号码索引
-                self.update_list_box()  # 更新列表框显示
+                phone_number_trimmed = phone_number_trimmed.strip()  # 去除号码两端的空白字符
+                if "-" in phone_number_trimmed:
+                    _, phone_number = phone_number_trimmed.split("-")
+                code_receiver.add_phone_request(phone_number_trimmed, phone_number, request_url)
+                self.update_list_box()
 
     def update_list_box(self):
         self.current_phone_var.set("")
         self.current_code_var.set("")
         self.list_box.delete(0, tk.END)
-        for i, (phone_number, request_url) in enumerate(code_receiver.phone_requests):
+        for i, (phone_number, phone_number_trimmed, request_url) in enumerate(code_receiver.phone_requests):
             item = f"{i + 1}. 手机号: {phone_number}, 地址: {request_url}"
             self.list_box.insert(tk.END, item)
             if i == code_receiver.current_index:
@@ -156,14 +158,13 @@ class AppGUI:
             for line in lines:
                 line = line.strip()
                 if line:
-                    phone_number, request_url = line.split("\t")
-                    phone_number = phone_number[2:]  # 去除前面的"1-"
-                    code_receiver.add_phone_request(phone_number, request_url)
-
-            self.current_index = 0  # 更新当前号码索引
+                    phone_number_trimmed, request_url = line.split("\t")
+                    if "-" in phone_number_trimmed:
+                        _, phone_number = phone_number_trimmed.split("-")
+                    code_receiver.add_phone_request(phone_number_trimmed,phone_number, request_url)
             self.update_list_box()  # 更新列表框显示
-            self.current_phone_var.set(code_receiver.phone_requests[0][0])
-            pyperclip.copy(code_receiver.phone_requests[0][0])
+            self.current_phone_var.set(code_receiver.phone_requests[0][1])
+            pyperclip.copy(code_receiver.phone_requests[0][1])
 
     def clear_phone_requests(self):
         code_receiver.phone_requests.clear()
@@ -183,7 +184,7 @@ class AppGUI:
             self.stop_button.config(state=tk.NORMAL)
             self.process_next_phone()
             threading.Thread(target=self.wait_for_code).start()
-            #self.update_list_box()  # 更新列表框显示
+            # self.update_list_box()  # 更新列表框显示
 
     def stop_processing(self):
         if self.is_processing:
