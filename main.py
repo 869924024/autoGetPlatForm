@@ -21,7 +21,7 @@ class CodeReceiver:
 
     def get_current_phone_number(self):
         if self.current_index >= 0 and self.current_index < len(self.phone_requests):
-            return self.phone_requests[self.current_index][1]
+            return self.phone_requests[self.current_index][0]
         else:
             return None
 
@@ -32,7 +32,7 @@ class CodeReceiver:
             return None
 
     def get_current_code(self):
-        if self.current_index >= 0 and self.current_index < len(self.code_queue):
+        if self.current_index >= 0 and self.current_index < len(self.phone_requests):
             return self.code_queue
         else:
             return None
@@ -40,7 +40,7 @@ class CodeReceiver:
     def get_next_phone_number(self):
         if self.current_index < len(self.phone_requests) - 1:
             self.current_index += 1
-            return self.phone_requests[self.current_index][1]
+            return self.phone_requests[self.current_index][0]
         else:
             return None
 
@@ -60,7 +60,7 @@ class CodeReceiver:
             if code:
                 self.code_queue = code
             else:
-                print(f"No code received for {phone_number}")
+                print(f"No code received for {phone_number} , request_uerl: {request_url}")
         except requests.RequestException as e:
             print(f"Request failed for {phone_number}. Error: {str(e)}")
 
@@ -167,8 +167,8 @@ class AppGUI:
                         _, phone_number = phone_number_trimmed.split("-")
                     code_receiver.add_phone_request(phone_number_trimmed,phone_number, request_url)
             self.update_list_box()  # 更新列表框显示
-            self.current_phone_var.set(code_receiver.phone_requests[0][1])
-            pyperclip.copy(code_receiver.phone_requests[0][1])
+            self.current_phone_var.set(code_receiver.phone_requests[0][0])
+            pyperclip.copy(code_receiver.phone_requests[0][0])
 
     def clear_phone_requests(self):
         code_receiver.phone_requests.clear()
@@ -219,7 +219,7 @@ class AppGUI:
         while self.is_waiting:
             self.is_copying = True
             code_receiver.request_code(self.current_phone_var.get(), code_receiver.get_current_phone_url())
-            time.sleep(3)
+            time.sleep(0.5)
             self.check_for_code()
 
     def check_for_code(self):
