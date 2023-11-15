@@ -18,6 +18,11 @@ class CodeReceiver:
 
     def add_phone_request(self, phone_number_trimmed, phone_number, request_url):
         self.phone_requests.append((phone_number_trimmed, phone_number, request_url))
+    def get_current_phone_number_trimmed(self):
+        if self.current_index >= 0 and self.current_index < len(self.phone_requests):
+            return self.phone_requests[self.current_index][0]
+        else:
+            return None
 
     def get_current_phone_number(self):
         if self.current_index >= 0 and self.current_index < len(self.phone_requests):
@@ -113,9 +118,10 @@ class AppGUI:
 
         # 创建全局事件监听器
         self.listener = keyboard.GlobalHotKeys({
-            '<ctrl>+1': self.copy_current_phone,
-            '<ctrl>+2': self.copy_current_code,
-            '<ctrl>+3': self.process_next_phone
+            '<ctrl>+1': self.copy_phone_number_trimmed,
+            '<ctrl>+2': self.copy_current_phone,
+            '<ctrl>+3': self.copy_current_code,
+            '<ctrl>+4': self.process_next_phone
         })
 
     def run(self):
@@ -147,9 +153,9 @@ class AppGUI:
             self.list_box.insert(tk.END, item)
             if i == code_receiver.current_index:
                 self.list_box.itemconfig(i, fg="red")  # 将当前号码标识为红色
-                #选中当前号码
+                # 选中当前号码
                 self.list_box.select_set(i)
-                #移动到当前号码
+                # 移动到当前号码
                 self.list_box.see(i)
 
     def import_numbers(self):
@@ -162,10 +168,13 @@ class AppGUI:
             for line in lines:
                 line = line.strip()
                 if line:
-                    phone_number_trimmed, request_url = line.split("\t")
+                    phone_number_trimmed, request_url = line.split(" ")
                     if "-" in phone_number_trimmed:
                         _, phone_number = phone_number_trimmed.split("-")
-                    code_receiver.add_phone_request(phone_number_trimmed,phone_number, request_url)
+                    else:
+                        phone_number = phone_number_trimmed
+                        phone_number_trimmed = "1-" + phone_number
+                    code_receiver.add_phone_request(phone_number_trimmed, phone_number, request_url)
             self.update_list_box()  # 更新列表框显示
             self.current_phone_var.set(code_receiver.phone_requests[0][1])
             pyperclip.copy(code_receiver.phone_requests[0][1])
@@ -219,7 +228,7 @@ class AppGUI:
         while self.is_waiting:
             self.is_copying = True
             code_receiver.request_code(self.current_phone_var.get(), code_receiver.get_current_phone_url())
-            time.sleep(3)
+            time.sleep(1)
             self.check_for_code()
 
     def check_for_code(self):
@@ -233,6 +242,11 @@ class AppGUI:
         phone_number = code_receiver.get_current_phone_number()
         if phone_number:
             pyperclip.copy(phone_number)
+    def copy_phone_number_trimmed(self):
+        print("copy_phone_number_trimmed")
+        phone_number_trimmed = code_receiver.get_current_phone_number_trimmed()
+        if phone_number_trimmed:
+            pyperclip.copy(phone_number_trimmed)
 
     def copy_current_code(self):
         code = code_receiver.get_current_code()
