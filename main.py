@@ -236,7 +236,7 @@ class AppGUI:
         if code and self.is_copying:
             self.current_code_var.set(code)
             # self.is_waiting = False
-            self.copy_current_code()
+            #self.copy_current_code()
 
     def copy_current_phone(self):
         phone_number = code_receiver.get_current_phone_number()
